@@ -26,6 +26,9 @@ export default function ChatPage() {
   }, [messages, isTyping]);
 
   const handleSend = async (textToSend) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
     const text = textToSend || inputValue.trim();
     if (!text) return;
 
@@ -104,6 +107,9 @@ export default function ChatPage() {
           <div>
             <button 
               onClick={() => {
+                if ('speechSynthesis' in window) {
+                  window.speechSynthesis.cancel();
+                }
                 setMessages([
                   {
                     sender: 'bot',
