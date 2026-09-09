@@ -1,7 +1,61 @@
-from fastapi import APIRouter, HTTPException
+"""
+Milestone 3 - Query API with authentication.
 
+Flow:
+
+    FastAPI
+        ↓
+    Authentication
+        ↓
+    Conversation ownership validation
+        ↓
+    Database Session
+        ↓
+    LangGraph Workflow
+        ↓
+    Conversation Memory
+        ↓
+    Query Understanding
+        ↓
+    Conditional Routing
+        ├── Retrieval
+        │     ↓
+        │  Response Generation
+        │
+        └── Clarification
+              ↓
+          Refined Query
+              ↓
+           Retrieval
+              ↓
+        Response Generation
+              ↓
+        Save Conversation
+              ↓
+        Response Transparency
+              ↓
+        Final JSON Response
+"""
+
+from __future__ import annotations
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+)
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.core.models import (
+    Conversation,
+    User,
+)
+from app.dependencies.auth import get_current_user
 from app.models.request_models import QueryRequest
 from app.orchestration.workflow import run_workflow
+from app.transparency.service import build_transparency
+from app.voice.output import prepare_speech_text
 
 
 router = APIRouter(
@@ -13,59 +67,80 @@ router = APIRouter(
     "/query",
     summary="Query Documents",
     description=(
-        "Run the complete Milestone 2 LangGraph workflow.\n\n"
-        "Flow: "
-        "FastAPI → LangGraph Workflow → Query Understanding → "
-        "Query Routing → Retrieval → Response Generation → "
-        "Final Response"
+        "Run the Milestone 2 + Milestone 3 "
+        "LangGraph workflow with authentication, "
+        "conversation memory, clarification, "
+        "voice support, and response transparency."
     ),
 )
 def query_documents(
     request: QueryRequest,
+    current_user: User = Depends(
+        get_current_user
+    ),
+    db: Session = Depends(get_db),
 ):
     """
-    Run the complete Milestone 2 LangGraph workflow.
+    Execute the complete authenticated M3 workflow.
 
-    Flow:
-        FastAPI
-        ->
-        LangGraph Workflow
-        ->
-        Query Understanding
-        ->
-        Query Routing
-        ->
-        Retrieval
-        ->
-        Response Generation
-        ->
-        Final Response
+    Conversation IDs are checked before entering
+    the existing LangGraph workflow.
     """
 
-    # -------------------------------------------------------------
-    # Validate request
-    # -------------------------------------------------------------
-
+    # Validate retrieval count.
     if request.k < 1:
         raise HTTPException(
             status_code=400,
-            detail="k must be at least 1",
+            detail="k must be at least 1.",
         )
+
+    # -------------------------------------------------------------
+    # Validate conversation ownership.
+    # -------------------------------------------------------------
+    if request.conversation_id:
+
+        conversation = (
+            db.query(Conversation)
+            .filter(
+                Conversation.id
+                == request.conversation_id,
+                Conversation.user_id
+                == current_user.id,
+            )
+            .first()
+        )
+
+        if conversation is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found.",
+            )
 
     try:
         # ---------------------------------------------------------
-        # Run the complete LangGraph workflow
+        # Execute the existing M3 LangGraph workflow.
+        #
+        # Authentication is handled outside the workflow.
         # ---------------------------------------------------------
-
         result = run_workflow(
             query=request.query,
             k=request.k,
+            conversation_id=request.conversation_id,
+            clarification_answer=(
+                request.clarification_answer
+            ),
+            clarification_question=(
+                request.clarification_question
+            ),
+            original_query=(
+                request.original_query
+            ),
+            db=db,
         )
 
         # ---------------------------------------------------------
-        # Handle workflow-level errors
+        # Workflow-level failures.
         # ---------------------------------------------------------
-
         if result.get("error"):
             raise HTTPException(
                 status_code=500,
@@ -73,9 +148,8 @@ def query_documents(
             )
 
         # ---------------------------------------------------------
-        # Extract Query Understanding result
+        # Query Understanding result.
         # ---------------------------------------------------------
-
         query_analysis = result.get(
             "query_analysis"
         )
@@ -88,17 +162,90 @@ def query_documents(
             )
 
         # ---------------------------------------------------------
-        # Return final Milestone 2 response
+        # Clarification information.
         # ---------------------------------------------------------
+        clarification_required = result.get(
+            "clarification_required",
+            False,
+        )
+
+        clarification_question = result.get(
+            "clarification_question"
+        )
+
+        # ---------------------------------------------------------
+        # Retrieval and generated response.
+        # ---------------------------------------------------------
+        retrieval_result = result.get(
+            "retrieval_result"
+        )
+
+        response_result = result.get(
+            "response"
+        )
+
+        # ---------------------------------------------------------
+        # Response transparency.
+        # ---------------------------------------------------------
+        transparency = build_transparency(
+            retrieval_result
+        )
+
+        # ---------------------------------------------------------
+        # Prepare clean text for browser TTS.
+        # ---------------------------------------------------------
+        speech_text = (
+            prepare_speech_text(
+                response_result.get(
+                    "answer",
+                    "",
+                )
+            )
+            if response_result
+            else None
+        )
 
         return {
             "success": True,
+
+            # Preserve original user input.
             "query": request.query,
-            "query_understanding": query_understanding,
-            "route": result.get("route"),
-            "route_reason": result.get("route_reason"),
-            "retrieval": result.get("retrieval_result"),
-            "response": result.get("response"),
+
+            "conversation_id": result.get(
+                "conversation_id"
+            ),
+
+            "user_id": str(
+                current_user.id
+            ),
+
+            "query_understanding": (
+                query_understanding
+            ),
+
+            "route": result.get(
+                "route"
+            ),
+
+            "route_reason": result.get(
+                "route_reason"
+            ),
+
+            "clarification_required": (
+                clarification_required
+            ),
+
+            "clarification_question": (
+                clarification_question
+            ),
+
+            "retrieval": retrieval_result,
+
+            "response": response_result,
+
+            "speech_text": speech_text,
+
+            "transparency": transparency,
         }
 
     except HTTPException:
@@ -108,7 +255,7 @@ def query_documents(
         raise HTTPException(
             status_code=400,
             detail=str(error),
-        )
+        ) from error
 
     except Exception as error:
         raise HTTPException(
@@ -116,4 +263,4 @@ def query_documents(
             detail=(
                 f"Query processing failed: {error}"
             ),
-        )
+        ) from error
