@@ -12,7 +12,7 @@
  */
 
 const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 ).replace(/\/$/, '');
 
 let useMock = false;
@@ -720,6 +720,8 @@ export async function sendChatMessage(
       originalQuery;
   }
 
+  console.log("[CHAT] Request payload:", requestBody);
+
   const response = await fetch(
     `${API_BASE_URL}/query`,
     {
@@ -740,4 +742,92 @@ export async function sendChatMessage(
   }
 
   return data;
+}
+
+/* ------------------------------------------------------------------ */
+/* Admin APIs                                                         */
+/* ------------------------------------------------------------------ */
+
+export async function getAdminOverview() {
+  const response = await fetch(
+    `${API_BASE_URL}/admin/overview`,
+    {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    },
+  );
+
+  return parseResponse(response);
+}
+
+export async function getAdminUsers() {
+  const response = await fetch(
+    `${API_BASE_URL}/admin/users`,
+    {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    },
+  );
+
+  return parseResponse(response);
+}
+
+export async function getAdminUser(userId) {
+  const response = await fetch(
+    `${API_BASE_URL}/admin/users/${encodeURIComponent(userId)}`,
+    {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    },
+  );
+
+  return parseResponse(response);
+}
+
+export async function getAdminDocuments() {
+  const response = await fetch(
+    `${API_BASE_URL}/admin/documents`,
+    {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    },
+  );
+
+  return parseResponse(response);
+}
+
+export async function deleteAdminDocument(documentId) {
+  const response = await fetch(
+    `${API_BASE_URL}/admin/documents/${encodeURIComponent(documentId)}`,
+    {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    },
+  );
+
+  return parseResponse(response);
+}
+
+export async function getQueriesPerUser() {
+  const response = await fetch(
+    `${API_BASE_URL}/admin/analytics/queries-per-user`,
+    {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    },
+  );
+
+  return parseResponse(response);
+}
+
+export async function getFrequentQueries(limit = 10) {
+  const response = await fetch(
+    `${API_BASE_URL}/admin/analytics/frequent-queries?limit=${encodeURIComponent(limit)}`,
+    {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    },
+  );
+
+  return parseResponse(response);
 }

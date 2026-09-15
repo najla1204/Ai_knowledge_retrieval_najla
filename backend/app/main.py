@@ -1,8 +1,8 @@
 """
 QueryNest FastAPI application entry point.
 
-Registers all API routers, configures CORS,
-and automatically initializes the database schema.
+Registers all API routers and configures CORS.
+Database schema changes are managed by Alembic migrations.
 """
 
 from contextlib import asynccontextmanager
@@ -17,8 +17,14 @@ from app.api.query import router as query_router
 from app.api.upload import router as upload_router
 from app.api.conversations import router as conversations_router
 from app.api.voice import router as voice_router
+from app.api.knowledge_base import router as knowledge_base_router
+# -------------------------------------------------------------
+# Milestone 4 imports
+# -------------------------------------------------------------
+from app.analytics.router import router as analytics_router
+from app.knowledge_gaps.router import router as knowledge_gaps_router
+from app.admin.router import router as admin_router
 from app.core.config import CORS_ALLOW_ORIGINS
-from app.core.database import init_db
 
 
 @asynccontextmanager
@@ -26,9 +32,9 @@ async def lifespan(app: FastAPI):
     """
     Application startup/shutdown lifecycle.
 
-    On startup, automatically create any missing database tables.
+    Database schema management is handled separately
+    through Alembic migrations.
     """
-    init_db()
     yield
 
 
@@ -76,4 +82,23 @@ app.include_router(
 
 app.include_router(
     voice_router
+)
+
+app.include_router(
+    knowledge_base_router
+)
+
+# -------------------------------------------------------------
+# Milestone 4 API routes
+# -------------------------------------------------------------
+app.include_router(
+    analytics_router
+)
+
+app.include_router(
+    knowledge_gaps_router
+)
+
+app.include_router(
+    admin_router
 )

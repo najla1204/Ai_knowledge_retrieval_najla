@@ -4,6 +4,7 @@ import './AuthPage.css';
 
 import { useAuth } from '../context/Authcontext';
 
+
 export default function AuthPage({
   onLoginSuccess,
   onNavigateToWorkspace,
@@ -16,6 +17,7 @@ export default function AuthPage({
     quickLogin,
     logout,
   } = useAuth();
+
 
   const [activeTab, setActiveTab] = useState('login');
 
@@ -36,9 +38,9 @@ export default function AuthPage({
   /* UI state */
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
-  const [loginError, setLoginError] = useState('');
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
+
 
   /* ---------------------------------------------------------------- */
   /* Toast                                                             */
@@ -54,6 +56,7 @@ export default function AuthPage({
       setToast(null);
     }, 4500);
   };
+
 
   /* ---------------------------------------------------------------- */
   /* Password strength                                                 */
@@ -113,7 +116,10 @@ export default function AuthPage({
     };
   };
 
-  const strength = getPasswordStrength(signupPassword);
+
+  const strength =
+    getPasswordStrength(signupPassword);
+
 
   /* ---------------------------------------------------------------- */
   /* Backend login                                                     */
@@ -122,15 +128,14 @@ export default function AuthPage({
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
 
-    /* Always clear the previous error before a new attempt */
-    setLoginError('');
-    setToast(null);
-
-    if (!loginEmail.trim() || !loginPassword) {
-      const message = 'Please fill in both email and password.';
-
-      setLoginError(message);
-      triggerToast('error', message);
+    if (
+      !loginEmail.trim() ||
+      !loginPassword
+    ) {
+      triggerToast(
+        'error',
+        'Please fill in both email and password.',
+      );
 
       return;
     }
@@ -144,12 +149,10 @@ export default function AuthPage({
         rememberMe,
       );
 
-      /* Login succeeded */
-      setLoginError('');
-
       triggerToast(
         'success',
-        data?.message || 'Logged in successfully!',
+        data?.message ||
+          'Logged in successfully!',
       );
 
       if (onLoginSuccess) {
@@ -157,41 +160,24 @@ export default function AuthPage({
       }
 
       if (onNavigateToWorkspace) {
-        setTimeout(() => {
-          onNavigateToWorkspace();
-        }, 500);
+        setTimeout(
+          onNavigateToWorkspace,
+          500,
+        );
       }
+
     } catch (error) {
-      /*
-       * IMPORTANT:
-       * The backend returns HTTP 401 for an incorrect
-       * email/password. Never expose the backend error
-       * directly to the user.
-       */
+      triggerToast(
+        'error',
+        error?.message ||
+          'Unable to sign in. Please check your credentials.',
+      );
 
-      console.error('Login failed:', error);
-
-      const message = 'Incorrect email or password.';
-
-      /*
-       * Set the inline error.
-       * This is displayed directly below the password box.
-       */
-      setLoginError(message);
-
-      /*
-       * Also show a toast notification.
-       */
-      triggerToast('error', message);
-
-      /*
-       * Make absolutely sure we remain on the login tab.
-       */
-      setActiveTab('login');
     } finally {
       setSubmitting(false);
     }
   };
+
 
   /* ---------------------------------------------------------------- */
   /* Backend registration                                              */
@@ -260,7 +246,8 @@ export default function AuthPage({
 
       triggerToast(
         'success',
-        data?.message || 'Account created successfully!',
+        data?.message ||
+          'Account created successfully!',
       );
 
       if (onLoginSuccess) {
@@ -268,35 +255,42 @@ export default function AuthPage({
       }
 
       if (onNavigateToWorkspace) {
-        setTimeout(() => {
-          onNavigateToWorkspace();
-        }, 500);
+        setTimeout(
+          onNavigateToWorkspace,
+          500,
+        );
       }
+
     } catch (error) {
       triggerToast(
         'error',
         error?.message ||
           'Unable to create your account.',
       );
+
     } finally {
       setSubmitting(false);
     }
   };
 
+
   /* ---------------------------------------------------------------- */
   /* Quick login                                                       */
   /* ---------------------------------------------------------------- */
 
-  const handleQuickLogin = async (preset) => {
-    setLoginError('');
+  const handleQuickLogin = async (
+    preset,
+  ) => {
     setSubmitting(true);
 
     try {
-      const data = await quickLogin(preset);
+      const data =
+        await quickLogin(preset);
 
       triggerToast(
         'success',
-        data?.message || 'Signed in successfully.',
+        data?.message ||
+          'Signed in successfully.',
       );
 
       if (onLoginSuccess) {
@@ -304,20 +298,24 @@ export default function AuthPage({
       }
 
       if (onNavigateToWorkspace) {
-        setTimeout(() => {
-          onNavigateToWorkspace();
-        }, 500);
+        setTimeout(
+          onNavigateToWorkspace,
+          500,
+        );
       }
+
     } catch (error) {
       triggerToast(
         'error',
         error?.message ||
           'Quick login failed. Make sure the demo account exists in the backend.',
       );
+
     } finally {
       setSubmitting(false);
     }
   };
+
 
   /* ---------------------------------------------------------------- */
   /* Logout                                                            */
@@ -333,10 +331,12 @@ export default function AuthPage({
         'success',
         'Signed out successfully.',
       );
+
     } finally {
       setSubmitting(false);
     }
   };
+
 
   /* ---------------------------------------------------------------- */
   /* Forgot password                                                   */
@@ -354,6 +354,12 @@ export default function AuthPage({
       return;
     }
 
+    /*
+     * There is currently no password-reset endpoint
+     * in the backend authentication API.
+     *
+     * Therefore this remains a UI placeholder.
+     */
     triggerToast(
       'success',
       'Password reset is not yet enabled on the backend.',
@@ -362,6 +368,7 @@ export default function AuthPage({
     setShowForgotModal(false);
     setForgotEmail('');
   };
+
 
   /* ---------------------------------------------------------------- */
   /* Logged-in view                                                    */
@@ -374,7 +381,6 @@ export default function AuthPage({
         {toast && (
           <div
             className={`auth-toast auth-toast-${toast.type}`}
-            role="alert"
           >
             <span
               style={{
@@ -382,7 +388,9 @@ export default function AuthPage({
                 marginRight: '8px',
               }}
             >
-              {toast.type === 'success' ? '✓' : '⚠️'}
+              {toast.type === 'success'
+                ? '✓'
+                : '⚠️'}
             </span>
 
             <span
@@ -396,7 +404,6 @@ export default function AuthPage({
             </span>
 
             <button
-              type="button"
               onClick={() => setToast(null)}
               className="toast-close-btn"
             >
@@ -426,6 +433,7 @@ export default function AuthPage({
             </p>
 
           </div>
+
 
           <div className="auth-logged-in-box">
 
@@ -475,11 +483,11 @@ export default function AuthPage({
 
             </div>
 
+
             <div className="auth-actions-group">
 
               {onNavigateToWorkspace && (
                 <button
-                  type="button"
                   onClick={onNavigateToWorkspace}
                   className="auth-submit-btn"
                   disabled={submitting}
@@ -489,7 +497,6 @@ export default function AuthPage({
               )}
 
               <button
-                type="button"
                 onClick={handleLogout}
                 className="preset-btn"
                 disabled={submitting}
@@ -513,6 +520,7 @@ export default function AuthPage({
     );
   }
 
+
   /* ---------------------------------------------------------------- */
   /* Authentication forms                                             */
   /* ---------------------------------------------------------------- */
@@ -520,11 +528,9 @@ export default function AuthPage({
   return (
     <div className="auth-page-container">
 
-      {/* Toast notification */}
       {toast && (
         <div
           className={`auth-toast auth-toast-${toast.type}`}
-          role="alert"
         >
           <span
             style={{
@@ -532,7 +538,9 @@ export default function AuthPage({
               marginRight: '8px',
             }}
           >
-            {toast.type === 'success' ? '✓' : '⚠️'}
+            {toast.type === 'success'
+              ? '✓'
+              : '⚠️'}
           </span>
 
           <span
@@ -546,7 +554,6 @@ export default function AuthPage({
           </span>
 
           <button
-            type="button"
             onClick={() => setToast(null)}
             className="toast-close-btn"
           >
@@ -554,6 +561,7 @@ export default function AuthPage({
           </button>
         </div>
       )}
+
 
       <div className="auth-card">
 
@@ -578,19 +586,20 @@ export default function AuthPage({
 
         </div>
 
+
         {/* Tabs */}
         <div className="auth-tab-switch">
 
           <button
             type="button"
             className={`auth-tab-btn ${
-              activeTab === 'login' ? 'active' : ''
+              activeTab === 'login'
+                ? 'active'
+                : ''
             }`}
-            onClick={() => {
-              setActiveTab('login');
-              setLoginError('');
-              setToast(null);
-            }}
+            onClick={() =>
+              setActiveTab('login')
+            }
           >
             Sign In
           </button>
@@ -598,18 +607,19 @@ export default function AuthPage({
           <button
             type="button"
             className={`auth-tab-btn ${
-              activeTab === 'signup' ? 'active' : ''
+              activeTab === 'signup'
+                ? 'active'
+                : ''
             }`}
-            onClick={() => {
-              setActiveTab('signup');
-              setLoginError('');
-              setToast(null);
-            }}
+            onClick={() =>
+              setActiveTab('signup')
+            }
           >
             Create Account
           </button>
 
         </div>
+
 
         {/* ---------------------------------------------------------- */}
         {/* LOGIN                                                        */}
@@ -619,15 +629,11 @@ export default function AuthPage({
           <form
             onSubmit={handleLoginSubmit}
             className="auth-form"
-            noValidate={false}
           >
 
             <div className="form-group">
 
-              <label
-                htmlFor="login-email"
-                className="input-label"
-              >
+              <label className="input-label">
                 Email Address
               </label>
 
@@ -647,16 +653,15 @@ export default function AuthPage({
                 </svg>
 
                 <input
-                  id="login-email"
                   type="email"
                   className="input-text with-icon"
                   placeholder="name@company.com"
                   value={loginEmail}
-                  onChange={(e) => {
-                    setLoginEmail(e.target.value);
-                    setLoginError('');
-                  }}
-                  autoComplete="email"
+                  onChange={(e) =>
+                    setLoginEmail(
+                      e.target.value,
+                    )
+                  }
                   required
                 />
 
@@ -664,29 +669,27 @@ export default function AuthPage({
 
             </div>
 
+
             <div className="form-group">
 
               <div className="label-row">
 
-                <label
-                  htmlFor="login-password"
-                  className="input-label"
-                >
+                <label className="input-label">
                   Password
                 </label>
 
                 <button
                   type="button"
                   className="forgot-link"
-                  onClick={() => {
-                    setShowForgotModal(true);
-                    setLoginError('');
-                  }}
+                  onClick={() =>
+                    setShowForgotModal(true)
+                  }
                 >
                   Forgot password?
                 </button>
 
               </div>
+
 
               <div className="input-wrapper">
 
@@ -707,12 +710,10 @@ export default function AuthPage({
                     rx="2"
                     ry="2"
                   />
-
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
 
                 <input
-                  id="login-password"
                   type={
                     showLoginPassword
                       ? 'text'
@@ -721,11 +722,11 @@ export default function AuthPage({
                   className="input-text with-icon with-end-icon"
                   placeholder="••••••••••••"
                   value={loginPassword}
-                  onChange={(e) => {
-                    setLoginPassword(e.target.value);
-                    setLoginError('');
-                  }}
-                  autoComplete="current-password"
+                  onChange={(e) =>
+                    setLoginPassword(
+                      e.target.value,
+                    )
+                  }
                   required
                 />
 
@@ -737,57 +738,16 @@ export default function AuthPage({
                       !showLoginPassword,
                     )
                   }
-                  aria-label={
-                    showLoginPassword
-                      ? 'Hide password'
-                      : 'Show password'
-                  }
                 >
-                  {showLoginPassword ? '👁️' : '🔒'}
+                  {showLoginPassword
+                    ? '👁️'
+                    : '🔒'}
                 </button>
 
               </div>
 
-              {/* ================================================== */}
-              {/* WRONG PASSWORD ERROR                                */}
-              {/* ================================================== */}
-
-              {loginError && (
-                <div
-                  role="alert"
-                  aria-live="assertive"
-                  style={{
-                    marginTop: '10px',
-                    padding: '12px 14px',
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(255, 77, 77, 0.12)',
-                    border: '1px solid rgba(255, 77, 77, 0.45)',
-                    color: '#ff6b6b',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: '1rem',
-                      flexShrink: 0,
-                    }}
-                  >
-                    ⚠️
-                  </span>
-
-                  <span>
-                    {loginError}
-                  </span>
-                </div>
-              )}
-
             </div>
+
 
             <div className="form-checkbox-row">
 
@@ -811,6 +771,7 @@ export default function AuthPage({
 
             </div>
 
+
             <button
               type="submit"
               disabled={
@@ -826,6 +787,7 @@ export default function AuthPage({
 
           </form>
         )}
+
 
         {/* ---------------------------------------------------------- */}
         {/* SIGNUP                                                       */}
@@ -879,6 +841,7 @@ export default function AuthPage({
 
             </div>
 
+
             <div className="form-group">
 
               <label className="input-label">
@@ -917,6 +880,7 @@ export default function AuthPage({
 
             </div>
 
+
             <div className="form-group">
 
               <label className="input-label">
@@ -942,7 +906,6 @@ export default function AuthPage({
                     rx="2"
                     ry="2"
                   />
-
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
 
@@ -971,16 +934,14 @@ export default function AuthPage({
                       !showSignupPassword,
                     )
                   }
-                  aria-label={
-                    showSignupPassword
-                      ? 'Hide password'
-                      : 'Show password'
-                  }
                 >
-                  {showSignupPassword ? '👁️' : '🔒'}
+                  {showSignupPassword
+                    ? '👁️'
+                    : '🔒'}
                 </button>
 
               </div>
+
 
               {signupPassword && (
                 <div className="strength-meter">
@@ -1011,6 +972,7 @@ export default function AuthPage({
               )}
 
             </div>
+
 
             <div className="form-group">
 
@@ -1048,6 +1010,7 @@ export default function AuthPage({
 
               </div>
 
+
               {signupConfirmPassword && (
                 <div
                   style={{
@@ -1080,6 +1043,7 @@ export default function AuthPage({
 
             </div>
 
+
             <div className="form-checkbox-row">
 
               <label className="checkbox-label">
@@ -1102,6 +1066,7 @@ export default function AuthPage({
 
             </div>
 
+
             <button
               type="submit"
               disabled={
@@ -1118,6 +1083,7 @@ export default function AuthPage({
           </form>
         )}
 
+
         {/* ---------------------------------------------------------- */}
         {/* Quick access                                                 */}
         {/* ---------------------------------------------------------- */}
@@ -1127,6 +1093,7 @@ export default function AuthPage({
             OR DEMO QUICK ACCESS
           </span>
         </div>
+
 
         <div className="preset-buttons-grid">
 
@@ -1141,6 +1108,7 @@ export default function AuthPage({
             <span>👤</span>
             Demo User (Alex)
           </button>
+
 
           <button
             type="button"
@@ -1157,6 +1125,7 @@ export default function AuthPage({
         </div>
 
       </div>
+
 
       {/* ------------------------------------------------------------ */}
       {/* Forgot password modal                                         */}
@@ -1193,8 +1162,11 @@ export default function AuthPage({
               enabled by the QueryNest backend.
             </p>
 
+
             <form
-              onSubmit={handleForgotPassword}
+              onSubmit={
+                handleForgotPassword
+              }
             >
 
               <input
@@ -1213,6 +1185,7 @@ export default function AuthPage({
                 }}
               />
 
+
               <div
                 style={{
                   display: 'flex',
@@ -1225,11 +1198,14 @@ export default function AuthPage({
                   type="button"
                   className="preset-btn"
                   onClick={() =>
-                    setShowForgotModal(false)
+                    setShowForgotModal(
+                      false,
+                    )
                   }
                 >
                   Cancel
                 </button>
+
 
                 <button
                   type="submit"
