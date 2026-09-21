@@ -317,22 +317,79 @@ Answer the user's question using ONLY the retrieved context below.
 37. Do not cite bibliography numbers, footnotes, section numbering, or
     list numbering inside the source as if they were retrieved-context
     citation labels.
+38. Every factual answer based on retrieved context MUST contain at least
+    one valid retrieved-context citation such as [1].
+39. Keep citations attached to the factual claim or grouped claims they support.
 
 ==================== ANSWER CONSTRUCTION ====================
 
-38. Inspect all retrieved blocks first, then write the answer.
-39. For list questions, merge and deduplicate the complete supported list
-    before responding.
-40. Preserve the meaning and wording of explicitly retrieved list members
-    where practical.
-41. If the source presents a list, use a clear numbered or bulleted list.
-42. Do not summarize a list when the user explicitly asks for the list.
-43. Do not mention internal retrieval/reranking mechanisms unless needed
-    to explain why information is unavailable.
-44. Be concise and direct.
-45. If the user asks generally about a document, summarize whatever relevant
-    content is actually present and cite it. Do not claim the document has
-    no information merely because the retrieved excerpt is sparse.
+40. Inspect all retrieved blocks first, then write the answer.
+41. Treat retrieved context as evidence, not as a response template.
+42. Preserve exact names, terminology, dates, numbers, and other factual
+    details, but formulate explanations in your own natural language.
+43. Do not copy sentences or paragraphs from the retrieved context unless
+    the user explicitly asks for a quotation.
+44. When multiple retrieved passages contain related information, synthesize
+    them into one coherent explanation.
+45. For list questions, preserve the actual item names but explain them
+    briefly when the retrieved context supports the explanation.
+46. Do not add facts, examples, explanations, or background knowledge that
+    are not supported by the retrieved context.
+47. Answer like a knowledgeable assistant explaining the retrieved evidence,
+    rather than like the source document being pasted into the response.
+48. If the retrieved context does not contain enough information to answer
+    part of the question, explicitly say so instead of using outside knowledge.
+49. Be concise, clear, and explanatory.
+
+==================== Generic Table Reasoning ====================
+
+When retrieved context contains tabular information:
+
+1. Identify the table headers, row labels, and cell values before answering.
+
+2. Determine which row or rows correspond to the user's question.
+
+3. Determine which column corresponds to the specific attribute, category,
+   time period, scenario, location, or other qualifier requested by the user.
+
+4. Treat explicit structured table relationships such as `Header = Value`
+   as authoritative evidence of the row-column mapping.
+
+5. When a context block contains both `[STRUCTURED TABLE EVIDENCE]` and
+   flattened page text representing the same table, use the structured table
+   evidence as the authoritative representation for table values. Do not infer
+   table values from the flattened copy when the structured representation
+   is available.
+
+6. For every candidate answer, verify BOTH the requested row/entity/metric/label
+   and the requested column/attribute/qualifier.
+
+7. When multiple values exist for the same row, return only the value from the
+   exact requested column unless the user explicitly asks for multiple columns
+   or a comparison. Do not return all candidate values merely because they occur
+   in the same row.
+
+8. Never choose a value merely because it appears first, last, or has a
+   larger/smaller magnitude.
+
+9. If table formatting has been flattened, reconstruct the relationship from
+   explicit header/value mappings, row labels, table ordering, and surrounding
+   context. Do not assume adjacent values belong to the same qualifier.
+
+10. When a structured row explicitly contains the requested column and its value,
+    use that exact cell value rather than another value from the same row or
+    nearby text.
+
+11. If the row-column relationship cannot be determined reliably, do not guess.
+    State that the available context is insufficient or ambiguous.
+
+12. Preserve the original value, unit, terminology, and meaning from the retrieved
+    context.
+
+13. Answer only from the retrieved evidence and do not introduce unsupported
+    values or assumptions.
+
+===============================================================
 
 ==================== RETRIEVED CONTEXT ====================
 
@@ -346,6 +403,9 @@ USER QUESTION:
 ==================== FINAL ANSWER ====================
 
 Answer only from the retrieved context and follow the rules above.
+
+Before finishing, verify that the answer contains at least one valid
+retrieved-context citation such as [1].
 """.strip()
 
     return prompt

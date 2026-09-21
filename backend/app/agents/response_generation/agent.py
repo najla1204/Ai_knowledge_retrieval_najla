@@ -155,6 +155,59 @@ def _get_relevance_score(
     except (TypeError, ValueError):
         return None
 
+# ---------------------------------------------------------------------
+# Retrieval-refusal detection
+# ---------------------------------------------------------------------
+
+INSUFFICIENT_CONTEXT_PATTERNS = (
+    # Full no-evidence responses. These intentionally require
+    # "any information" / an explicit knowledge-base refusal so a
+    # legitimate partial answer is not mistaken for a total refusal.
+    "the retrieved documents do not contain any information",
+    "retrieved documents do not contain any information",
+    "the retrieved context does not contain any information",
+    "retrieved context does not contain any information",
+    "the available context does not contain any information",
+    "the available context does not provide any information",
+    "the context does not contain any information",
+    "i don't have enough information in the available knowledge base",
+    "i do not have enough information in the available knowledge base",
+    "cannot answer from the available context",
+    "can't answer from the available context",
+    "no information is available in the retrieved context",
+    "no information is available in the available context",
+)
+
+
+def is_insufficient_context_answer(answer: str) -> bool:
+    """Return True when the model explicitly says the retrieved context lacks the answer."""
+
+    if not isinstance(answer, str):
+        return False
+
+    normalized = answer.lower().strip()
+
+    return any(
+        pattern in normalized
+        for pattern in INSUFFICIENT_CONTEXT_PATTERNS
+    )
+
+
+def _strip_citation_markers(answer: str) -> str:
+    """Remove RAG citation markers from a no-evidence refusal response."""
+
+    if not isinstance(answer, str):
+        return answer
+
+    cleaned = re.sub(
+        r"(?:\[\d+\]|【\d+】)",
+        "",
+        answer,
+    )
+
+    # Remove excess whitespace left behind by stripped citations.
+    return re.sub(r"[ \t]{2,}", " ", cleaned).strip()
+
 
 # ---------------------------------------------------------------------
 # Citation extraction
@@ -349,25 +402,49 @@ def _calculate_retrieval_quality(
     candidate_scores: list[float] = []
 
     for chunk in chunks:
-        score = _get_relevance_score(chunk)
+
+        score = _get_relevance_score(
+            chunk
+        )
+
         if score is not None:
-            candidate_scores.append(score)
+            candidate_scores.append(
+                score
+            )
 
     if not candidate_scores:
         return 0.0
 
     # Top-ranked evidence matters more than distant candidates.
-    candidate_scores.sort(reverse=True)
-    weights = (0.60, 0.25, 0.15)
+    candidate_scores.sort(
+        reverse=True
+    )
+
+    weights = (
+        0.60,
+        0.25,
+        0.15,
+    )
+
     weighted_total = 0.0
     weight_total = 0.0
 
-    for index, score in enumerate(candidate_scores[:3]):
+    for index, score in enumerate(
+        candidate_scores[:3]
+    ):
+
         weight = weights[index]
-        weighted_total += score * weight
+
+        weighted_total += (
+            score * weight
+        )
+
         weight_total += weight
 
-    return weighted_total / weight_total
+    return (
+        weighted_total
+        / weight_total
+    )
 
 
 def _estimate_confidence(
@@ -375,7 +452,7 @@ def _estimate_confidence(
     chunks: list[dict[str, Any] | str],
 ) -> float:
     """
-    Estimate grounded-answer confidence from: 
+    Estimate grounded-answer confidence from:
 
         1. Retrieval evidence quality.
         2. Citation coverage.
@@ -399,6 +476,7 @@ def _estimate_confidence(
     )
 
     if sources:
+
         # Citations are useful evidence of grounding, but they should not
         # dominate retrieval quality because an otherwise good answer can
         # occasionally omit a marker.
@@ -406,10 +484,14 @@ def _estimate_confidence(
             retrieval_quality * 0.80
             + citation_coverage * 0.20
         )
+
     else:
+
         # No recognizable citation: retain retrieval evidence but apply a
         # meaningful 20% grounding penalty instead of a fixed 0.15 score.
-        confidence = retrieval_quality * 0.80
+        confidence = (
+            retrieval_quality * 0.80
+        )
 
     return round(
         max(
@@ -450,9 +532,13 @@ def generate_response(
     # ---------------------------------------------------------------
 
     if (
-        not isinstance(question, str)
+        not isinstance(
+            question,
+            str,
+        )
         or not question.strip()
     ):
+
         return LLMResponse(
             answer="",
             sources=[],
@@ -467,7 +553,10 @@ def generate_response(
         chunk
         for chunk in (chunks or [])
         if (
-            isinstance(chunk, dict)
+            isinstance(
+                chunk,
+                dict,
+            )
             and str(
                 chunk.get(
                     "content",
@@ -476,7 +565,10 @@ def generate_response(
             ).strip()
         )
         or (
-            isinstance(chunk, str)
+            isinstance(
+                chunk,
+                str,
+            )
             and chunk.strip()
         )
     ]
@@ -493,11 +585,6 @@ def generate_response(
             confidence=0.0,
         )
 
-    # ---------------------------------------------------------------
-    # Build grounded prompt
-    # ---------------------------------------------------------------
-
-    print(f"[CHAT] Query entering LLM: {question}")
     prompt = build_prompt(
         question,
         valid_chunks,
@@ -536,6 +623,20 @@ def generate_response(
     answer = _normalize_citation_markers(
         answer
     )
+
+    # ---------------------------------------------------------------
+    # No-evidence guard
+    # ---------------------------------------------------------------
+    # The retrieval path may return weak candidate chunks so the response
+    # generator can inspect them. If the model explicitly concludes that
+    # those chunks do not contain the answer, they are not evidence for the
+    # response and must not be exposed as citations/sources.
+    if is_insufficient_context_answer(answer):
+        return LLMResponse(
+            answer=_strip_citation_markers(answer),
+            sources=[],
+            confidence=0.0,
+        )
 
     # ---------------------------------------------------------------
     # Extract sources
